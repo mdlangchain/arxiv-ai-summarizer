@@ -5,6 +5,7 @@ import anthropic
 from typing import List, Dict, Optional
 import logging
 import os
+import time
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -21,12 +22,16 @@ class ClaudeSummarizer:
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
 
-        self.client = anthropic.Anthropic(api_key=self.api_key)
+        # Initialize with longer timeout for Render hosting
+        self.client = anthropic.Anthropic(
+            api_key=self.api_key,
+            timeout=60.0  # Increase timeout for network issues
+        )
         self.model = "claude-sonnet-4-20250514"  # Latest Claude Sonnet model
 
     def summarize_paper(self, title: str, abstract: str) -> str:
         """
-        Generate a summary for a single research paper.
+        Generate a summary for a single research paper with retry logic.
 
         Args:
             title: Paper title
@@ -35,33 +40,47 @@ class ClaudeSummarizer:
         Returns:
             Generated summary string
         """
-        try:
-            prompt = self._build_summary_prompt(title, abstract)
+        max_retries = 2
+        retry_delay = 1
 
-            logger.info(f"Generating summary for paper: {title[:50]}...")
+        for attempt in range(max_retries):
+            try:
+                prompt = self._build_summary_prompt(title, abstract)
 
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=500,
-                temperature=0.2,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            )
+                logger.info(f"Generating summary for paper: {title[:50]}... (attempt {attempt + 1})")
 
-            summary = response.content[0].text.strip()
-            logger.info("Summary generated successfully")
-            return summary
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=500,
+                    temperature=0.2,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
 
-        except anthropic.APIError as e:
-            logger.error(f"Claude API error: {e}")
-            return "Error generating summary due to API issue."
-        except Exception as e:
-            logger.error(f"Unexpected error generating summary: {e}")
-            return "Error generating summary."
+                summary = response.content[0].text.strip()
+                logger.info("Summary generated successfully")
+                return summary
+
+            except anthropic.APIError as e:
+                logger.error(f"Claude API error (attempt {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    return "Error generating summary due to API issue."
+            except Exception as e:
+                logger.error(f"Unexpected error generating summary (attempt {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    return "Error generating summary."
+
+        return "Error generating summary after retries."
 
     def summarize_papers(self, papers: List[Dict]) -> List[Dict]:
         """
@@ -111,37 +130,54 @@ Summary:"""
 
     def test_connection(self) -> bool:
         """
-        Test the connection to Claude API.
+        Test the connection to Claude API with retry logic.
 
         Returns:
             True if connection successful, False otherwise
         """
-        try:
-            # Test with a very simple request and detailed error logging
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=10,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": "Hi"
-                    }
-                ]
-            )
+        max_retries = 3
+        retry_delay = 2
 
-            result = response.content[0].text.strip()
-            logger.info(f"Claude API connection test successful. Response: {result}")
-            return True
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Testing Claude API connection (attempt {attempt + 1}/{max_retries})")
 
-        except anthropic.APIError as e:
-            logger.error(f"Claude API error: {e.status_code} - {e.message}")
-            return False
-        except anthropic.AuthenticationError as e:
-            logger.error(f"Claude authentication error: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Claude API connection test failed: {type(e).__name__}: {e}")
-            return False
+                # Test with a very simple request
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=10,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": "Hi"
+                        }
+                    ]
+                )
+
+                result = response.content[0].text.strip()
+                logger.info(f"Claude API connection test successful. Response: {result}")
+                return True
+
+            except anthropic.APIError as e:
+                logger.error(f"Claude API error (attempt {attempt + 1}): {e}")
+                if hasattr(e, 'status_code'):
+                    logger.error(f"Status code: {e.status_code}")
+                if hasattr(e, 'message'):
+                    logger.error(f"Message: {e.message}")
+            except anthropic.AuthenticationError as e:
+                logger.error(f"Claude authentication error: {e}")
+                return False  # Don't retry auth errors
+            except Exception as e:
+                logger.error(f"Claude API connection test failed (attempt {attempt + 1}): {type(e).__name__}: {e}")
+
+            # Wait before retrying (except on last attempt)
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+
+        logger.error(f"Claude API connection failed after {max_retries} attempts")
+        return False
 
 
 # Convenience function for easy import
