@@ -71,23 +71,27 @@ class ClaudeSummarizer:
                     time.sleep(retry_delay)
                     retry_delay *= 2
                 else:
-                    return "Error generating summary due to connection issue."
+                    # Fallback: generate basic summary from abstract
+                    return self._generate_fallback_summary(title, abstract)
             except anthropic.APIError as e:
                 logger.error(f"Claude API error (attempt {attempt + 1}): {e}")
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                     retry_delay *= 2
                 else:
-                    return "Error generating summary due to API issue."
+                    # Fallback: generate basic summary from abstract
+                    return self._generate_fallback_summary(title, abstract)
             except Exception as e:
                 logger.error(f"Unexpected error generating summary (attempt {attempt + 1}): {e}")
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                     retry_delay *= 2
                 else:
-                    return "Error generating summary."
+                    # Fallback: generate basic summary from abstract
+                    return self._generate_fallback_summary(title, abstract)
 
-        return "Error generating summary after retries."
+        # Final fallback
+        return self._generate_fallback_summary(title, abstract)
 
     def summarize_papers(self, papers: List[Dict]) -> List[Dict]:
         """
@@ -157,6 +161,32 @@ Title: {title}
 Abstract: {abstract}
 
 Summary:"""
+
+    def _generate_fallback_summary(self, title: str, abstract: str) -> str:
+        """Generate a basic summary when Claude API is unavailable."""
+        try:
+            # Extract first few sentences from abstract
+            sentences = abstract.split('. ')
+
+            if len(sentences) >= 3:
+                # Take first 3 sentences and clean them up
+                summary_sentences = sentences[:3]
+                summary = '. '.join(summary_sentences).strip()
+                if not summary.endswith('.'):
+                    summary += '.'
+            else:
+                # If abstract is short, use it but truncate if too long
+                summary = abstract[:400] + ('...' if len(abstract) > 400 else '')
+
+            # Add a note that this is a fallback
+            summary += " [Summary generated from abstract - Claude AI unavailable]"
+
+            logger.info("Generated fallback summary from abstract")
+            return summary
+
+        except Exception as e:
+            logger.error(f"Error generating fallback summary: {e}")
+            return f"Research paper: {title[:100]}... [Summary temporarily unavailable]"
 
     def test_connection(self) -> bool:
         """
