@@ -27,7 +27,7 @@ class ClaudeSummarizer:
             api_key=self.api_key,
             timeout=60.0  # Increase timeout for network issues
         )
-        self.model = "claude-sonnet-4-20250514"  # Latest Claude Sonnet model
+        self.model = "claude-3-sonnet-20240229"  # Use stable Claude 3 model
 
     def summarize_paper(self, title: str, abstract: str) -> str:
         """
@@ -65,6 +65,13 @@ class ClaudeSummarizer:
                 logger.info("Summary generated successfully")
                 return summary
 
+            except anthropic.APIConnectionError as e:
+                logger.error(f"Claude API connection error (attempt {attempt + 1}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    return "Error generating summary due to connection issue."
             except anthropic.APIError as e:
                 logger.error(f"Claude API error (attempt {attempt + 1}): {e}")
                 if attempt < max_retries - 1:
@@ -158,6 +165,9 @@ Summary:"""
                 logger.info(f"Claude API connection test successful. Response: {result}")
                 return True
 
+            except anthropic.APIConnectionError as e:
+                logger.error(f"Claude API connection error (attempt {attempt + 1}): {e}")
+                # Connection errors are usually temporary, so we retry
             except anthropic.APIError as e:
                 logger.error(f"Claude API error (attempt {attempt + 1}): {e}")
                 if hasattr(e, 'status_code'):
