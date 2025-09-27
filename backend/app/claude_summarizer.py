@@ -117,23 +117,30 @@ Summary:"""
             True if connection successful, False otherwise
         """
         try:
+            # Test with a very simple request and detailed error logging
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=50,
+                max_tokens=10,
                 messages=[
                     {
                         "role": "user",
-                        "content": "Hello, can you respond with 'API connection successful'?"
+                        "content": "Hi"
                     }
                 ]
             )
 
             result = response.content[0].text.strip()
-            logger.info("Claude API connection test successful")
-            return "successful" in result.lower()
+            logger.info(f"Claude API connection test successful. Response: {result}")
+            return True
 
+        except anthropic.APIError as e:
+            logger.error(f"Claude API error: {e.status_code} - {e.message}")
+            return False
+        except anthropic.AuthenticationError as e:
+            logger.error(f"Claude authentication error: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Claude API connection test failed: {e}")
+            logger.error(f"Claude API connection test failed: {type(e).__name__}: {e}")
             return False
 
 
