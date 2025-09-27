@@ -1,0 +1,143 @@
+"""
+Claude API client for generating paper summaries.
+"""
+import anthropic
+from typing import List, Dict, Optional
+import logging
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+
+class ClaudeSummarizer:
+    """Client for generating paper summaries using Claude API."""
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.getenv('ANTHROPIC_API_KEY')
+        if not self.api_key:
+            raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
+
+        self.client = anthropic.Anthropic(api_key=self.api_key)
+        self.model = "claude-sonnet-4-20250514"  # Latest Claude Sonnet model
+
+    def summarize_paper(self, title: str, abstract: str) -> str:
+        """
+        Generate a summary for a single research paper.
+
+        Args:
+            title: Paper title
+            abstract: Paper abstract
+
+        Returns:
+            Generated summary string
+        """
+        try:
+            prompt = self._build_summary_prompt(title, abstract)
+
+            logger.info(f"Generating summary for paper: {title[:50]}...")
+
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=500,
+                temperature=0.2,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            )
+
+            summary = response.content[0].text.strip()
+            logger.info("Summary generated successfully")
+            return summary
+
+        except anthropic.APIError as e:
+            logger.error(f"Claude API error: {e}")
+            return "Error generating summary due to API issue."
+        except Exception as e:
+            logger.error(f"Unexpected error generating summary: {e}")
+            return "Error generating summary."
+
+    def summarize_papers(self, papers: List[Dict]) -> List[Dict]:
+        """
+        Generate summaries for multiple papers.
+
+        Args:
+            papers: List of paper dictionaries
+
+        Returns:
+            List of papers with added 'summary' field
+        """
+        summarized_papers = []
+
+        for i, paper in enumerate(papers):
+            logger.info(f"Processing paper {i+1}/{len(papers)}: {paper.get('title', 'Unknown')[:50]}...")
+
+            try:
+                summary = self.summarize_paper(
+                    title=paper.get('title', ''),
+                    abstract=paper.get('abstract', '')
+                )
+
+                # Add summary to paper data
+                paper_with_summary = paper.copy()
+                paper_with_summary['summary'] = summary
+                summarized_papers.append(paper_with_summary)
+
+            except Exception as e:
+                logger.error(f"Error summarizing paper {i+1}: {e}")
+                # Add paper with error message
+                paper_with_summary = paper.copy()
+                paper_with_summary['summary'] = "Summary generation failed."
+                summarized_papers.append(paper_with_summary)
+
+        logger.info(f"Completed summarizing {len(summarized_papers)} papers")
+        return summarized_papers
+
+    def _build_summary_prompt(self, title: str, abstract: str) -> str:
+        """Build the prompt for Claude to generate a paper summary."""
+        return f"""Summarize this AI research paper in 3-4 sentences for a technical audience. Focus on the main contribution, methodology, and key findings. Be concise but informative.
+
+Title: {title}
+
+Abstract: {abstract}
+
+Summary:"""
+
+    def test_connection(self) -> bool:
+        """
+        Test the connection to Claude API.
+
+        Returns:
+            True if connection successful, False otherwise
+        """
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=50,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": "Hello, can you respond with 'API connection successful'?"
+                    }
+                ]
+            )
+
+            result = response.content[0].text.strip()
+            logger.info("Claude API connection test successful")
+            return "successful" in result.lower()
+
+        except Exception as e:
+            logger.error(f"Claude API connection test failed: {e}")
+            return False
+
+
+# Convenience function for easy import
+def create_claude_summarizer() -> ClaudeSummarizer:
+    """Create and return a ClaudeSummarizer instance."""
+    return ClaudeSummarizer()

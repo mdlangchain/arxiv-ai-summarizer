@@ -1,0 +1,159 @@
+.paper-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  padding: 24px;
+  border: 1px solid #e1e5e9;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.paper-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.paper-header {
+  margin-bottom: 16px;
+}
+
+.paper-title {
+  margin: 0 0 8px 0;
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.title-link {
+  color: #2563eb;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.title-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.paper-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.paper-authors {
+  font-weight: 500;
+}
+
+.paper-date {
+  color: #9ca3af;
+}
+
+.paper-summary {
+  margin: 20px 0;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.paper-summary h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.paper-summary p {
+  margin: 0;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+.paper-actions {
+  display: flex;
+  gap: 12px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.pdf-button {
+  background: #dc2626;
+  color: white;
+}
+
+.pdf-button:hover {
+  background: #b91c1c;
+  color: white;
+}
+
+.arxiv-button {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.arxiv-button:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.paper-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.category-tag {
+  display: inline-block;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid #bfdbfe;
+}
+
+@media (max-width: 768px) {
+  .paper-card {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .paper-title {
+    font-size: 1.1rem;
+  }
+
+  .paper-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .paper-actions {
+    flex-direction: column;
+  }
+
+  .action-button {
+    justify-content: center;
+  }
+}
