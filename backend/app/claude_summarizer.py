@@ -91,7 +91,7 @@ class ClaudeSummarizer:
 
     def summarize_papers(self, papers: List[Dict]) -> List[Dict]:
         """
-        Generate summaries for multiple papers.
+        Generate summaries for multiple papers with memory optimization.
 
         Args:
             papers: List of paper dictionaries
@@ -99,6 +99,8 @@ class ClaudeSummarizer:
         Returns:
             List of papers with added 'summary' field
         """
+        # Limit papers to prevent memory issues
+        papers = papers[:10]  # Max 10 papers for free hosting
         summarized_papers = []
 
         for i, paper in enumerate(papers):
@@ -110,16 +112,37 @@ class ClaudeSummarizer:
                     abstract=paper.get('abstract', '')
                 )
 
-                # Add summary to paper data
-                paper_with_summary = paper.copy()
-                paper_with_summary['summary'] = summary
+                # Create new dict to avoid memory buildup
+                paper_with_summary = {
+                    'id': paper.get('id', ''),
+                    'title': paper.get('title', ''),
+                    'authors': paper.get('authors', []),
+                    'abstract': paper.get('abstract', ''),
+                    'published_date': paper.get('published_date'),
+                    'pdf_link': paper.get('pdf_link'),
+                    'arxiv_link': paper.get('arxiv_link'),
+                    'categories': paper.get('categories', []),
+                    'summary': summary
+                }
                 summarized_papers.append(paper_with_summary)
+
+                # Clear original paper from memory
+                del paper
 
             except Exception as e:
                 logger.error(f"Error summarizing paper {i+1}: {e}")
                 # Add paper with error message
-                paper_with_summary = paper.copy()
-                paper_with_summary['summary'] = "Summary generation failed."
+                paper_with_summary = {
+                    'id': paper.get('id', ''),
+                    'title': paper.get('title', ''),
+                    'authors': paper.get('authors', []),
+                    'abstract': paper.get('abstract', ''),
+                    'published_date': paper.get('published_date'),
+                    'pdf_link': paper.get('pdf_link'),
+                    'arxiv_link': paper.get('arxiv_link'),
+                    'categories': paper.get('categories', []),
+                    'summary': "Summary generation failed."
+                }
                 summarized_papers.append(paper_with_summary)
 
         logger.info(f"Completed summarizing {len(summarized_papers)} papers")

@@ -70,8 +70,8 @@ def get_papers():
         if not arxiv_client or not claude_summarizer:
             return jsonify({'error': 'Service unavailable - clients not initialized'}), 503
 
-        # Get query parameters
-        limit = min(int(request.args.get('limit', 10)), 50)  # Max 50 papers
+        # Get query parameters - reduce max limit for memory constraints
+        limit = min(int(request.args.get('limit', 5)), 10)  # Max 10 papers for free tier
         category = request.args.get('category', 'cs.AI')
 
         # Build search query
