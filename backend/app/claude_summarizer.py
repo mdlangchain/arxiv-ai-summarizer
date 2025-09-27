@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 import logging
 import os
 import time
+import gc
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -103,9 +104,11 @@ class ClaudeSummarizer:
         Returns:
             List of papers with added 'summary' field
         """
-        # Limit papers to prevent memory issues
-        papers = papers[:10]  # Max 10 papers for free hosting
+        # Strict limit for memory stability
+        papers = papers[:8]  # Max 8 papers to prevent OOM
         summarized_papers = []
+
+        logger.info(f"Starting to process {len(papers)} papers for summarization")
 
         for i, paper in enumerate(papers):
             logger.info(f"Processing paper {i+1}/{len(papers)}: {paper.get('title', 'Unknown')[:50]}...")
@@ -130,8 +133,10 @@ class ClaudeSummarizer:
                 }
                 summarized_papers.append(paper_with_summary)
 
-                # Clear original paper from memory
+                # Clear original paper from memory and force garbage collection
                 del paper
+                if i % 2 == 0:  # Run GC every 2 papers
+                    gc.collect()
 
             except Exception as e:
                 logger.error(f"Error summarizing paper {i+1}: {e}")
@@ -148,6 +153,9 @@ class ClaudeSummarizer:
                     'summary': "Summary generation failed."
                 }
                 summarized_papers.append(paper_with_summary)
+
+        # Final garbage collection
+        gc.collect()
 
         logger.info(f"Completed summarizing {len(summarized_papers)} papers")
         return summarized_papers
